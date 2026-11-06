@@ -4,7 +4,7 @@ This repository contains the research code, data and evaluation material for an 
 
 The project is a Faculty Research Support Program project in the Department of AI & Data Science, FAST School of Computing, National University of Computer and Emerging Sciences (FAST-NUCES), Lahore.
 
-> **Status:** Early development (Q1 to Q2). The repository currently holds the project scaffolding, the literature review material and the first baseline benchmarks. Components are added as the milestones below are completed.
+> **Status:** Early development (Q1 to Q2). Code, data and results will be added as the milestones below are completed.
 
 ---
 
@@ -13,8 +13,6 @@ The project is a Faculty Research Support Program project in the Department of A
 - [Motivation](#motivation)
 - [Research objectives](#research-objectives)
 - [System overview](#system-overview)
-- [Repository structure](#repository-structure)
-- [Getting started](#getting-started)
 - [Baseline model benchmark](#baseline-model-benchmark)
 - [Evaluation](#evaluation)
 - [Project timeline](#project-timeline)
@@ -78,82 +76,6 @@ The system is a pipeline of three on-device components. Each stage runs locally 
 | Speech synthesis | Speak the answer back | Offline Urdu TTS models |
 | Application | User interface | Minimal Android app with voice-first interaction |
 
-## Repository structure
-
-```
-edge-ai-urdu-agri-advisor/
-├── data/
-│   ├── raw/                # Source material as collected (not tracked if large)
-│   ├── processed/          # Cleaned and normalized Urdu text
-│   └── questions/          # Urdu farmer question sets (wheat, cotton) used for testing
-├── knowledge_base/         # Curated, expert-validated agricultural Q&A corpus
-├── models/
-│   ├── configs/            # Model and quantization configurations
-│   └── weights/            # Local model files (git-ignored)
-├── benchmarks/
-│   ├── scripts/            # llama.cpp benchmark and evaluation scripts
-│   └── results/            # Benchmark outputs (CSV / JSON) and summary tables
-├── compression/            # Distillation, pruning and quantization experiments
-├── asr/                    # Offline speech recognition experiments
-├── tts/                    # Offline Urdu speech synthesis experiments
-├── app/                    # Android prototype
-├── notebooks/              # Exploratory analysis
-├── docs/
-│   ├── literature/         # Literature review notes and reading list
-│   └── reports/            # Progress notes and evaluation reports
-├── environment.yml         # Conda environment specification
-├── .env.example            # Template for local paths and settings
-├── .gitignore
-├── LICENSE
-└── README.md
-```
-
-Large files, including model weights, audio recordings and raw data, are not committed to the repository. Instructions for obtaining them are given in the corresponding folders.
-
-## Getting started
-
-### Prerequisites
-
-- Linux, macOS, or Windows with WSL2
-- [Conda](https://docs.conda.io/) or Miniconda
-- Git and CMake (for building llama.cpp)
-- About 10 GB of free disk space for quantized model files
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/<organization-or-user>/edge-ai-urdu-agri-advisor.git
-cd edge-ai-urdu-agri-advisor
-```
-
-### 2. Create the environment
-
-```bash
-conda env create -f environment.yml
-conda activate edge-agri
-```
-
-### 3. Configure local settings
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` to set local paths, for example the directory holding GGUF model files and the path to the llama.cpp build. The `.env` file is git-ignored and must not be committed.
-
-### 4. Build llama.cpp
-
-```bash
-git clone https://github.com/ggml-org/llama.cpp.git
-cd llama.cpp
-cmake -B build
-cmake --build build --config Release
-```
-
-### 5. Download quantized models
-
-Quantized GGUF versions of the baseline models are downloaded from Hugging Face into the model directory set in `.env`. The models and quantization levels used in the benchmark are listed in `models/configs/`.
-
 ## Baseline model benchmark
 
 The first experiment compares small open language models that support Urdu on a set of 50 common farmer questions about wheat and cotton, written in Urdu. The questions cover four topics: sowing, fertiliser, irrigation and pest management. This question set also seeds the knowledge base and serves as an initial test set.
@@ -178,7 +100,7 @@ Each model is run in quantized form with llama.cpp on the same hardware and with
 - **Memory use:** peak resident memory during inference
 - **Response time:** time to first token and total generation time per answer
 
-Results are stored in `benchmarks/results/`, and the best-performing quantized model is used for the first prototype demonstration.
+The best-performing quantized model is used for the first prototype demonstration.
 
 ## Evaluation
 
@@ -205,7 +127,7 @@ The system is evaluated at two levels.
 
 ## Related work
 
-The project builds on the following works. The full reading list is kept in `docs/literature/`.
+The project builds on the following works.
 
 - **Agricultural advisory systems.** Telenor Pakistan's Kissan Dost Bashir voice service; Ali et al. (2026), *Kissan-Dost: Bridging the Last Mile in Smallholder Precision Agriculture with Conversational IoT*; Singh et al. (2024), *Farmer.Chat: Scaling AI-Powered Agricultural Services for Smallholder Farmers*; Woodard (2023), *ChatGPT vs. Claude as Generative AI Agricultural Extension Agents in Pakistan*.
 - **Small domain models.** KissanAI, *Dhenu2-In-Llama3.2-1B-Instruct* (2024).
