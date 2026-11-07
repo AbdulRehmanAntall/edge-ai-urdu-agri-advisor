@@ -1,0 +1,35 @@
+{
+  "llama_cpp": "ca89968 Fri Nov 6 16:06:59 2026 -0800",
+  "gen": {
+    "temperature": 0.3,
+    "top_p": 0.9,
+    "top_k": 40,
+    "repeat_penalty": 1.1,
+    "max_tokens": 512,
+    "seed": 42
+  },
+  "ctx": 4096,
+  "cpu_threads": 4,
+  "cpu_ids": [
+    "CTN-FU-01",
+    "CTN-NM-01",
+    "CTN-PP-01",
+    "CTN-WA-01",
+    "CTN-WM-01",
+    "WHT-FU-01",
+    "WHT-NM-01",
+    "WHT-PP-01",
+    "WHT-WA-01",
+    "WHT-WM-02"
+  ],
+  "judges": [
+    "Qwen3.5-27B-Q4_K_M.gguf",
+    "gemma-4-31B-it-Q4_K_M.gguf"
+  ],
+  "models": [
+    "gemma-4-E2B-it-Q4_0.gguf",
+    "tiny-aya-fire-q4_k_m.gguf",
+    "Qwen3.5-2B-Q4_K_M.gguf",
+    "Qwen3-1.7B-Q4_K_M.gguf"
+  ]
+}

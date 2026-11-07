@@ -4,7 +4,7 @@ This repository contains the research code, data and evaluation material for an 
 
 The project is a Faculty Research Support Program project in the Department of AI & Data Science, FAST School of Computing, National University of Computer and Emerging Sciences (FAST-NUCES), Lahore.
 
-> **Status:** Early development (Q1 to Q2). Code, data and results will be added as the milestones below are completed.
+> **Status:** Early development (Q1 to Q2). The baseline model benchmark is complete; see the [results page](docs/index.html). Further code, data and results will be added as the milestones below are completed.
 
 ---
 
@@ -13,6 +13,7 @@ The project is a Faculty Research Support Program project in the Department of A
 - [Motivation](#motivation)
 - [Research objectives](#research-objectives)
 - [System overview](#system-overview)
+- [Repository structure](#repository-structure)
 - [Baseline model benchmark](#baseline-model-benchmark)
 - [Evaluation](#evaluation)
 - [Project timeline](#project-timeline)
@@ -76,31 +77,78 @@ The system is a pipeline of three on-device components. Each stage runs locally 
 | Speech synthesis | Speak the answer back | Offline Urdu TTS models |
 | Application | User interface | Minimal Android app with voice-first interaction |
 
+## Repository structure
+
+```
+edge-ai-urdu-agri-advisor/
+├── data/
+│   └── urdu_eval_50_wheat_cotton.xlsx      # 50 Urdu questions with expert reference answers
+├── notebooks/
+│   └── urdu_agri_eval_50_A100.ipynb        # benchmark: llama.cpp runs, LLM judges, CPU timing (Colab A100)
+├── results/
+│   └── baseline_eval_50/                   # outputs of the notebook, unchanged
+│       ├── summary/                        # summary.csv, recommended_model.json, run_config.json,
+│       │                                   # judge_agreement.csv, significance_tests.csv
+│       ├── answers/                        # answers_gpu.csv, answers_scored.csv, answers_cpu_timing.csv
+│       ├── judging/                        # judge_scores_long.csv (one row per judge per answer)
+│       ├── human_rating/                   # blind rating sheet (.xlsx) and its answer key
+│       ├── figures/                        # comparison_charts.png
+│       └── logs/                           # llama.cpp server.log
+├── scripts/
+│   └── build_site.py                       # turns results/ into docs/assets/data.js
+├── docs/                                   # static results page (GitHub Pages ready)
+│   ├── index.html
+│   └── assets/data.js                      # generated; do not edit by hand
+└── README.md
+```
+
+**Results page.** `docs/index.html` is a self-contained static page with the full comparison and a side-by-side reader for all 200 answers. Open it directly in a browser, or publish it with GitHub Pages (Settings → Pages → Deploy from branch → `main`, folder `/docs`). After re-running the notebook, copy its outputs into `results/baseline_eval_50/` and rebuild the page data:
+
+```bash
+pip install pandas
+python scripts/build_site.py
+```
+
 ## Baseline model benchmark
 
-The first experiment compares small open language models that support Urdu on a set of 50 common farmer questions about wheat and cotton, written in Urdu. The questions cover four topics: sowing, fertiliser, irrigation and pest management. This question set also seeds the knowledge base and serves as an initial test set.
+The first experiment compares small open language models with Urdu support on 50 common farmer questions about wheat and cotton, written in Urdu (25 per crop). The questions cover five topics, with five questions per crop in each: weed management, nutrient management, fertiliser use, weather effects and plant protection. This question set also seeds the knowledge base and serves as an initial test set.
 
-**Candidate models**
+**Models tested** (all run as 4-bit GGUF files with llama.cpp)
 
-| Model | Parameters | Licence | Urdu coverage |
+| Model | GGUF source | Quantisation | File size |
 |---|---|---|---|
-| Qwen2.5-0.5B-Instruct | 0.5B | To be recorded | To be recorded |
-| Qwen2.5-1.5B-Instruct | 1.5B | To be recorded | To be recorded |
-| Llama 3.2 1B Instruct | 1B | To be recorded | To be recorded |
-| Gemma 3 1B | 1B | To be recorded | To be recorded |
-
-The licence and language coverage of each model are taken from its official model card and added once verified.
+| Gemma 4 E2B (instruction-tuned) | `ggml-org/gemma-4-E2B-it-GGUF` | Q4_0 | 2.84 GB |
+| Tiny Aya Fire | `CohereLabs/tiny-aya-fire-GGUF` | Q4_K_M | 2.14 GB |
+| Qwen3.5 2B | `unsloth/Qwen3.5-2B-GGUF` | Q4_K_M | 1.28 GB |
+| Qwen3 1.7B | `unsloth/Qwen3-1.7B-GGUF` | Q4_K_M | 1.11 GB |
 
 **Protocol**
 
-Each model is run in quantized form with llama.cpp on the same hardware and with the same prompt and decoding settings. For every model, the following are recorded:
+Every model ran on the same llama.cpp build (`ca89968`) with the same Urdu system prompt and decoding settings (temperature 0.3, top-p 0.9, top-k 40, repeat penalty 1.1, up to 512 tokens, seed 42, context 4096). The notebook records:
 
-- **Answer quality:** agronomic correctness and relevance of each answer, rated against a reference answer
-- **Urdu fluency:** grammaticality, script correctness and naturalness of the Urdu output
-- **Memory use:** peak resident memory during inference
-- **Response time:** time to first token and total generation time per answer
+- **Answer quality:** two large judge models from different families (Qwen3.5-27B and Gemma-4-31B) score each answer blind, from 1 to 5, for correctness and completeness against the reference answer, and flag harmful advice. chrF++ and BGE-M3 similarity to the reference are recorded as secondary measures.
+- **Urdu fluency:** the judges' fluency score (1 to 5), share of Urdu script, Hindi or English leakage, and repetition loops.
+- **Memory use:** peak resident memory (RSS) in a CPU-only run, which is the phone-relevant figure, plus GPU VRAM.
+- **Response time:** time to first token, tokens per second and total latency on an A100 GPU (all 50 questions) and on 4 CPU threads (10 questions, phone proxy), plus Urdu words per second.
 
-The best-performing quantized model is used for the first prototype demonstration.
+**Results**
+
+| Model | Answer quality (1–5) | Urdu fluency (1–5) | Overall (1–5) | Harmful answers (of 50) | Peak RAM, CPU | Median latency, CPU | Urdu words/s, CPU |
+|---|---|---|---|---|---|---|---|
+| **Gemma 4 E2B** | **2.09** | **4.32** | **3.10** | **21** | 4,318 MB | 21.7 s | **8.1** |
+| Tiny Aya Fire | 1.68 | 4.03 | 2.80 | 43 | 4,238 MB | 29.5 s | 5.6 |
+| Qwen3.5 2B | 1.04 | 1.98 | 1.46 | 45 | 2,692 MB | 18.8 s | 7.3 |
+| Qwen3 1.7B | 1.03 | 1.18 | 1.24 | 24 | 2,848 MB | 16.7 s | 5.1 |
+
+Answer quality is the mean of correctness and completeness; overall is the mean of correctness, completeness, fluency and relevance. Every pairwise difference in overall score is significant (paired Wilcoxon test, p ≤ 0.0011). The two judges agree closely (Spearman ρ 0.83 to 0.92 per criterion).
+
+**Findings**
+
+- Gemma 4 E2B is the best model on every quality and fluency measure, and Tiny Aya Fire is a close second on fluency. Both Qwen models produce poor Urdu and largely incorrect answers.
+- No model is ready for farmers. Even Gemma 4 E2B gives a mostly correct answer (correctness ≥ 4) to only 18% of questions, and the judges flag harmful advice in 21 of its 50 answers.
+- Only the two Qwen models fit the 3,000 MB RAM budget for a low-end phone, and they are the weakest. Gemma 4 E2B peaks at about 4.3 GB.
+
+**Recommendation.** Use Gemma 4 E2B for the first prototype demonstration. The notebook's automatic pick (best model within the RAM budget, Qwen3.5 2B) is not used because its answers are not usable. Next steps are to ground answers in the expert-validated knowledge base, fine-tune on Urdu agronomic Q&A, reduce the memory footprint (smaller context, lower-bit quantisation or distillation), complete the blind human rating in `results/baseline_eval_50/human_rating/`, and repeat the timing on the target phone.
 
 ## Evaluation
 

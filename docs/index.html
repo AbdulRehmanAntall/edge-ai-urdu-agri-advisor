@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Urdu Agri Model Benchmark</title>
+<meta name="description" content="Four quantised small language models compared with llama.cpp on 50 Urdu wheat and cotton questions: answer quality, Urdu fluency, memory use and response time.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: #fbfbfd;
+  --ink: #1d1d1f;
+  --ink-2: #515154;
+  --ink-3: #86868b;
+  --hair: #d2d2d7;
+  --grid: #e8e8ed;
+  --accent: #0066cc;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --good: #0ca30c; --warn: #fab219; --bad: #d03b3b;
+  --good-ink: #006300; --bad-ink: #b42323;
+  --seq-0: #f0f4fa; --seq-1: #cde2fb; --seq-2: #86b6ef; --seq-3: #3987e5; --seq-4: #1c5cab; --seq-5: #0d366b;
+  --sq-ink-0: #1d1d1f; --sq-ink-1: #1d1d1f; --sq-ink-2: #1d1d1f; --sq-ink-3: #fff; --sq-ink-4: #fff; --sq-ink-5: #fff;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #000000; --surface: #161617; --surface-2: #1d1d1f;
+    --ink: #f5f5f7; --ink-2: #c7c7cc; --ink-3: #8e8e93; --hair: #38383a; --grid: #2c2c2e;
+    --accent: #2997ff;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --good-ink: #30d158; --bad-ink: #ff6961;
+    --seq-0: #1d2633; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #3987e5; --seq-4: #86b6ef; --seq-5: #cde2fb;
+    --sq-ink-0: #f5f5f7; --sq-ink-1: #f5f5f7; --sq-ink-2: #f5f5f7; --sq-ink-3: #fff; --sq-ink-4: #0b0b0b; --sq-ink-5: #0b0b0b;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #000000; --surface: #161617; --surface-2: #1d1d1f;
+  --ink: #f5f5f7; --ink-2: #c7c7cc; --ink-3: #8e8e93; --hair: #38383a; --grid: #2c2c2e;
+  --accent: #2997ff;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --good-ink: #30d158; --bad-ink: #ff6961;
+  --seq-0: #1d2633; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #3987e5; --seq-4: #86b6ef; --seq-5: #cde2fb;
+  --sq-ink-0: #f5f5f7; --sq-ink-1: #f5f5f7; --sq-ink-2: #f5f5f7; --sq-ink-3: #fff; --sq-ink-4: #0b0b0b; --sq-ink-5: #0b0b0b;
+  --shadow: none;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font: 17px/1.47 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; letter-spacing: -0.01em;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 720px) { .wrap { padding: 0 32px; } }
+
+/* nav */
+nav.top {
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in srgb, var(--page) 80%, transparent);
+  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid color-mix(in srgb, var(--hair) 60%, transparent);
+}
+nav.top .wrap { display: flex; align-items: center; gap: 24px; height: 48px; }
+nav.top .brand { font-weight: 600; font-size: 15px; white-space: nowrap; }
+nav.top .links { display: flex; gap: 20px; overflow-x: auto; scrollbar-width: none; font-size: 13px; }
+nav.top .links::-webkit-scrollbar { display: none; }
+nav.top .links a { color: var(--ink-2); white-space: nowrap; }
+nav.top .links a:hover { color: var(--ink); text-decoration: none; }
+@media (max-width: 640px) { nav.top .brand { display: none; } }
+
+/* type */
+.eyebrow { font-size: 14px; font-weight: 600; color: var(--ink-3); text-transform: none; margin: 0 0 8px; }
+h1 { font-size: clamp(40px, 7vw, 72px); line-height: 1.05; letter-spacing: -0.035em; font-weight: 700; margin: 0 0 20px; }
+h2 { font-size: clamp(30px, 4.5vw, 48px); line-height: 1.08; letter-spacing: -0.03em; font-weight: 700; margin: 0 0 14px; }
+h3 { font-size: 21px; letter-spacing: -0.02em; font-weight: 600; margin: 0 0 6px; }
+.lede { font-size: clamp(19px, 2.4vw, 24px); line-height: 1.4; color: var(--ink-2); max-width: 760px; margin: 0; letter-spacing: -0.02em; }
+.sub { color: var(--ink-2); max-width: 720px; margin: 0 0 36px; }
+.small { font-size: 13px; color: var(--ink-3); }
+.num { font-variant-numeric: tabular-nums; }
+
+section { padding: 96px 0 0; scroll-margin-top: 24px; }
+section:last-of-type { padding-bottom: 96px; }
+header.hero { padding: 96px 0 24px; }
+@media (max-width: 640px) { section { padding-top: 64px; } header.hero { padding-top: 56px; } }
+
+/* cards */
+.card { background: var(--surface); border-radius: 18px; padding: 28px; box-shadow: var(--shadow); }
+@media (max-width: 640px) { .card { padding: 20px; border-radius: 16px; } }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
+.g4 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.g3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+
+/* stat tiles */
+.stat .k { font-size: 13px; color: var(--ink-2); font-weight: 500; }
+.stat .v { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin: 6px 0 4px; }
+.stat .v small { font-size: 20px; font-weight: 600; color: var(--ink-3); letter-spacing: -0.01em; }
+.stat .d { font-size: 14px; color: var(--ink-2); }
+
+/* verdict */
+.verdict { margin-top: 40px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.verdict .card h3 { display: flex; align-items: center; gap: 8px; }
+.verdict p { margin: 6px 0 0; color: var(--ink-2); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--hair); color: var(--ink-2); white-space: nowrap; }
+.pill.good { color: var(--good-ink); border-color: color-mix(in srgb, var(--good) 40%, transparent); }
+.pill.bad { color: var(--bad-ink); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+
+/* model cards */
+.model .top { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.model .rank { font-size: 13px; color: var(--ink-3); margin-left: auto; }
+.model dl { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; margin: 0; font-size: 14px; }
+.model dt { color: var(--ink-2); }
+.model dd { margin: 0; text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
+.model code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink-3); word-break: break-all; }
+
+/* charts */
+.chart-title { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+.chart-sub { font-size: 13px; color: var(--ink-3); margin: 0 0 18px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); margin: 0 0 20px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.bars { display: grid; gap: 12px; }
+.bar-row { display: grid; grid-template-columns: 108px 1fr 64px; align-items: center; gap: 12px; font-size: 14px; }
+.bar-row .lab { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-row .track { position: relative; height: 22px; }
+.bar-row .track::before { content: ""; position: absolute; inset: 10px 0; height: 2px; background: var(--grid); border-radius: 1px; }
+.bar-row .fill { position: absolute; left: 0; top: 3px; height: 16px; border-radius: 0 4px 4px 0; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+.bar-row .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.bar-row .marker { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 1.5px dashed var(--ink-3); }
+.bar-row .hit { position: absolute; inset: -6px 0; cursor: default; }
+@media (max-width: 480px) { .bar-row { grid-template-columns: 92px 1fr 48px; gap: 8px; font-size: 13px; } }
+.axis-note { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-3); margin: 8px 0 0 120px; margin-right: 76px; font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) { .axis-note { margin-left: 100px; margin-right: 56px; } }
+
+/* heatmap */
+.heat { width: 100%; min-width: 560px; table-layout: fixed; border-collapse: separate; border-spacing: 3px; font-size: 13px; }
+.heat th { font-weight: 500; color: var(--ink-2); text-align: left; padding: 4px 6px; }
+.heat thead th { text-align: center; font-size: 12px; vertical-align: bottom; }
+.heat td { text-align: center; padding: 12px 4px; border-radius: 8px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.scroll-x { overflow-x: auto; }
+
+/* scatter */
+svg text { font-family: inherit; }
+.scatter { width: 100%; height: auto; display: block; }
+
+/* tables */
+table.data { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+table.data th, table.data td { padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+table.data th:first-child, table.data td:first-child { text-align: left; }
+table.data thead th { font-size: 12px; color: var(--ink-3); font-weight: 600; }
+table.data tbody th { font-weight: 500; }
+table.data tr.group td { color: var(--ink-3); font-size: 12px; font-weight: 600; padding-top: 18px; text-align: left; }
+
+/* tooltip */
+#tip { position: fixed; pointer-events: none; z-index: 50; background: var(--surface); color: var(--ink); border: 1px solid var(--hair); border-radius: 10px; padding: 8px 12px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.12); opacity: 0; transition: opacity .12s; max-width: 260px; }
+#tip b { font-weight: 600; }
+
+/* explorer */
+.controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
+.seg { display: inline-flex; background: var(--grid); border-radius: 9px; padding: 2px; }
+.seg button { border: 0; background: none; color: var(--ink); font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 7px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.12); font-weight: 600; }
+select { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--hair); border-radius: 9px; padding: 7px 32px 7px 12px; max-width: 100%; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2386868b' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+.iconbtn { border: 1px solid var(--hair); background: var(--surface); color: var(--ink); border-radius: 9px; width: 36px; height: 34px; cursor: pointer; font-size: 16px; }
+.q-card { margin-bottom: 16px; }
+.q-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.ur { font-family: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Urdu Typesetting", serif; direction: rtl; text-align: right; line-height: 2.25; }
+.q-text { font-size: 24px; margin: 0; }
+details.ref { margin-top: 14px; border-top: 1px solid var(--grid); padding-top: 12px; }
+details.ref summary { cursor: pointer; font-size: 14px; color: var(--accent); list-style: none; }
+details.ref summary::-webkit-details-marker { display: none; }
+details.ref .ur { font-size: 16px; color: var(--ink-2); margin-top: 8px; }
+.answers { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
+.ans { display: flex; flex-direction: column; }
+.ans .head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.ans .head b { font-size: 15px; }
+.ans .head .lat { margin-left: auto; font-size: 13px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.scores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+.score { background: var(--surface-2); border: 1px solid var(--grid); border-radius: 10px; padding: 6px 4px; text-align: center; }
+.score .n { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.score .l { font-size: 10.5px; color: var(--ink-3); }
+.flags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; min-height: 0; }
+.ans .body { font-size: 16px; white-space: pre-wrap; max-height: 360px; overflow: auto; padding-left: 4px; }
+.ans .body.open { max-height: none; }
+.more { border: 0; background: none; color: var(--accent); font: inherit; font-size: 13px; padding: 6px 0 0; cursor: pointer; text-align: left; }
+.reasons { margin-top: 12px; border-top: 1px solid var(--grid); padding-top: 10px; font-size: 13px; color: var(--ink-2); }
+.reasons p { margin: 0 0 6px; }
+.reasons b { color: var(--ink); font-weight: 600; }
+
+/* lists */
+ol.steps { margin: 0; padding-left: 20px; color: var(--ink-2); }
+ol.steps li { margin-bottom: 10px; }
+ol.steps b { color: var(--ink); }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; font-size: 14px; margin: 0; }
+.kv dt { color: var(--ink-3); }
+.kv dd { margin: 0; }
+footer { border-top: 1px solid var(--hair); padding: 28px 0 48px; font-size: 12px; color: var(--ink-3); }
+footer p { margin: 0 0 6px; }
+</style>
+</head>
+<body>
+<div id="tip" role="tooltip"></div>
+
+<nav class="top" aria-label="Sections">
+  <div class="wrap">
+    <span class="brand">Urdu Agri Benchmark</span>
+    <div class="links">
+      <a href="#models">Models</a>
+      <a href="#quality">Quality</a>
+      <a href="#fluency">Fluency</a>
+      <a href="#memory">Memory</a>
+      <a href="#speed">Speed</a>
+      <a href="#explore">Explore answers</a>
+      <a href="#method">Method</a>
+      <a href="#next">Next steps</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<header class="hero wrap">
+  <p class="eyebrow">Edge AI for Agriculture · Baseline benchmark · FAST-NUCES Lahore</p>
+  <h1>Four small models.<br>Fifty Urdu farm questions.</h1>
+  <p class="lede">We ran four quantised language models with llama.cpp on 50 wheat and cotton questions written in Urdu, and recorded answer quality, Urdu fluency, memory use and response time for each.</p>
+
+  <div class="grid g4" style="margin-top:48px" id="hero-stats"></div>
+
+  <div class="verdict" id="verdict"></div>
+</header>
+
+<section id="models" class="wrap">
+  <p class="eyebrow">The candidates</p>
+  <h2>Every model ran in 4-bit form.</h2>
+  <p class="sub">Same llama.cpp build, same Urdu system prompt and the same sampling settings for all four. Cards are ordered by overall judge score.</p>
+  <div class="grid g4" id="model-cards"></div>
+</section>
+
+<section id="quality" class="wrap">
+  <p class="eyebrow">01 · Answer quality</p>
+  <h2>Gemma leads, but most answers are still wrong.</h2>
+  <p class="sub">Two large judge models (Qwen3.5-27B and Gemma-4-31B) scored each answer from 1 to 5 against an expert reference answer, without seeing which model wrote it. Answer quality is the mean of correctness and completeness.</p>
+  <div class="grid g2">
+    <div class="card">
+      <p class="chart-title">Answer quality</p>
+      <p class="chart-sub">Mean of correctness and completeness, scale 1–5</p>
+      <div class="bars" id="c-quality"></div>
+      <div class="axis-note"><span>1</span><span>3</span><span>5</span></div>
+    </div>
+    <div class="card">
+      <p class="chart-title">Answers rated mostly correct</p>
+      <p class="chart-sub">Share of 50 answers with mean correctness of 4 or higher</p>
+      <div class="bars" id="c-good"></div>
+      <div class="axis-note"><span>0%</span><span>50%</span><span>100%</span></div>
+    </div>
+    <div class="card">
+      <p class="chart-title">Answers flagged as harmful</p>
+      <p class="chart-sub">Out of 50; flagged when either judge marked the advice as harmful. Lower is better.</p>
+      <div class="bars" id="c-harm"></div>
+      <div class="axis-note"><span>0</span><span>25</span><span>50</span></div>
+    </div>
+    <div class="card">
+      <p class="chart-title">Similarity to the reference</p>
+      <p class="chart-sub">BGE-M3 cosine similarity (0–1). Wording-sensitive, so secondary to the judges.</p>
+      <div class="bars" id="c-sim"></div>
+      <div class="axis-note"><span>0.5</span><span>0.75</span><span>1.0</span></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <p class="chart-title">Answer quality by topic</p>
+    <p class="chart-sub">Mean of correctness and completeness for the 10 questions in each topic (5 wheat, 5 cotton). Stronger blue is better.</p>
+    <div class="scroll-x"><table class="heat" id="c-heat"></table></div>
+  </div>
+</section>
+
+<section id="fluency" class="wrap">
+  <p class="eyebrow">02 · Urdu fluency</p>
+  <h2>Gemma and Tiny Aya write natural Urdu. The Qwen models do not.</h2>
+  <p class="sub">All four models stay in Urdu script almost all the time, so script share does not separate them. The judges' fluency score does: grammar, word choice and whether the text reads as natural Urdu.</p>
+  <div class="grid g2">
+    <div class="card">
+      <p class="chart-title">Urdu fluency</p>
+      <p class="chart-sub">Judge score, scale 1–5</p>
+      <div class="bars" id="c-flu"></div>
+      <div class="axis-note"><span>1</span><span>3</span><span>5</span></div>
+    </div>
+    <div class="card">
+      <p class="chart-title">Output hygiene</p>
+      <p class="chart-sub">Across 50 answers per model</p>
+      <div class="scroll-x"><table class="data" id="t-hyg"></table></div>
+    </div>
+  </div>
+</section>
+
+<section id="memory" class="wrap">
+  <p class="eyebrow">03 · Memory use</p>
+  <h2>Only the two weakest models fit a 3 GB phone budget.</h2>
+  <p class="sub">Peak resident memory (RSS) of the llama.cpp server during a CPU-only run, the number that matters on a phone. The dashed line is the 3,000 MB budget set for a low-end Android device.</p>
+  <div class="grid g2">
+    <div class="card">
+      <p class="chart-title">Peak RAM, CPU run</p>
+      <p class="chart-sub">MB, 4096-token context. Lower is better.</p>
+      <div class="bars" id="c-ram"></div>
+      <div class="axis-note"><span>0</span><span>2,500</span><span>5,000 MB</span></div>
+    </div>
+    <div class="card">
+      <p class="chart-title">Model file size</p>
+      <p class="chart-sub">GGUF file on disk, GB. Lower is better.</p>
+      <div class="bars" id="c-file"></div>
+      <div class="axis-note"><span>0</span><span>1.5</span><span>3 GB</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="speed" class="wrap">
+  <p class="eyebrow">04 · Response time</p>
+  <h2>About 20 seconds per answer on four CPU threads.</h2>
+  <p class="sub">The CPU run (10 questions, 4 threads, up to 256 tokens) is the phone proxy. A low-end phone will be slower, but the ranking usually holds. Urdu words per second accounts for how many tokens each tokenizer spends on one Urdu word.</p>
+  <div class="grid g2">
+    <div class="card">
+      <p class="chart-title">Median time per answer, CPU</p>
+      <p class="chart-sub">Seconds, 4 threads. Lower is better.</p>
+      <div class="bars" id="c-lat"></div>
+      <div class="axis-note"><span>0</span><span>15</span><span>30 s</span></div>
+    </div>
+    <div class="card">
+      <p class="chart-title">Urdu words per second, CPU</p>
+      <p class="chart-sub">Generation speed ÷ tokens per Urdu word. Higher is better.</p>
+      <div class="bars" id="c-wps"></div>
+      <div class="axis-note"><span>0</span><span>5</span><span>10</span></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <p class="chart-title">Speed in detail</p>
+    <p class="chart-sub">GPU numbers are from an NVIDIA A100 over all 50 questions; CPU numbers from 4 Colab Xeon threads over 10 questions.</p>
+    <div class="scroll-x"><table class="data" id="t-speed"></table></div>
+  </div>
+</section>
+
+<section id="tradeoff" class="wrap">
+  <p class="eyebrow">The trade-off</p>
+  <h2>Quality costs memory.</h2>
+  <p class="sub">Overall judge score (mean of all four criteria) against peak RAM. The ideal model sits top-left: high score, inside the phone budget. None does yet.</p>
+  <div class="card">
+    <svg class="scatter" id="c-scatter" viewBox="0 0 960 420" role="img" aria-label="Overall score against peak RAM for four models"></svg>
+  </div>
+</section>
+
+<section id="explore" class="wrap">
+  <p class="eyebrow">Explore</p>
+  <h2>Read every answer side by side.</h2>
+  <p class="sub">Pick any of the 50 questions to see what each model said, how the judges scored it, and why. Scores are the mean of the two judges.</p>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Crop" id="f-crop">
+      <button aria-pressed="true" data-v="">All</button>
+      <button aria-pressed="false" data-v="Wheat">Wheat</button>
+      <button aria-pressed="false" data-v="Cotton">Cotton</button>
+    </div>
+    <select id="f-cat" aria-label="Topic"></select>
+    <select id="f-q" aria-label="Question" style="flex:1;min-width:220px"></select>
+    <button class="iconbtn" id="q-prev" aria-label="Previous question">‹</button>
+    <button class="iconbtn" id="q-next" aria-label="Next question">›</button>
+  </div>
+  <div class="card q-card" id="q-card"></div>
+  <div class="answers" id="answers"></div>
+</section>
+
+<section id="method" class="wrap">
+  <p class="eyebrow">Method</p>
+  <h2>How the numbers were produced.</h2>
+  <p class="sub">Everything below comes from <code>notebooks/urdu_agri_eval_50_A100.ipynb</code>; raw outputs are in <code>results/baseline_eval_50/</code>.</p>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Setup</h3>
+      <dl class="kv" id="setup" style="margin-top:14px"></dl>
+    </div>
+    <div class="card">
+      <h3>Do the two judges agree?</h3>
+      <p class="small" style="margin:4px 0 14px">Rank correlation and agreement over 200 answers.</p>
+      <div class="scroll-x"><table class="data" id="t-agree"></table></div>
+      <p class="small" style="margin:14px 0 0">The Gemma-4-31B judge is more lenient than the Qwen3.5-27B judge across the board, including for Tiny Aya, so the gap looks like general leniency rather than a preference for its own family. Neither judge favoured the Qwen candidates.</p>
+    </div>
+    <div class="card">
+      <h3>Are the differences real?</h3>
+      <p class="small" style="margin:4px 0 14px">Paired Wilcoxon signed-rank test on per-question overall scores.</p>
+      <div class="scroll-x"><table class="data" id="t-sig"></table></div>
+    </div>
+    <div class="card">
+      <h3>Caveats</h3>
+      <ol class="steps" style="margin-top:12px">
+        <li>Reference answers were machine-translated from expert English answers. Judges were told to grade facts, not wording.</li>
+        <li>Judges are large models, not agronomists. A blind sheet of all 200 answers is ready for human rating and should be the final word.</li>
+        <li>CPU timing used a Colab Xeon, not a phone. Measure again on the target device before the field trial.</li>
+        <li>Each model answered once (seed 42). Rankings rest on 50 questions.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section id="next" class="wrap">
+  <p class="eyebrow">Recommendation</p>
+  <h2>Prototype with Gemma 4 E2B. Fix its knowledge before the field.</h2>
+  <div class="grid g3" style="margin-top:28px">
+    <div class="card">
+      <h3>Use Gemma for the first demo</h3>
+      <p class="small" style="font-size:15px;color:var(--ink-2)">It is the best model on every quality and fluency measure, and the lead over Tiny Aya is statistically significant. The notebook's automatic pick, Qwen3.5 2B, fits the RAM budget but scores 1.04 / 5 on quality and 1.98 on fluency, which is not usable for a demo.</p>
+    </div>
+    <div class="card">
+      <h3>Ground the answers</h3>
+      <p class="small" style="font-size:15px;color:var(--ink-2)">Even Gemma gets only 18% of answers mostly right and gives harmful advice in 21 of 50. Retrieval from the expert-validated knowledge base, then fine-tuning on Urdu agronomy Q&amp;A, is the next lever, not a bigger model.</p>
+    </div>
+    <div class="card">
+      <h3>Shrink the footprint</h3>
+      <p class="small" style="font-size:15px;color:var(--ink-2)">Gemma peaks at 4.3 GB of RAM. A smaller context window, lower-bit quantisation or a distilled student should bring it under 3 GB. Then confirm human ratings and phone timings.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Edge AI for Agriculture: A Lightweight Voice-Interactive Agriculture Advisory System. Department of AI &amp; Data Science, FAST-NUCES Lahore.</p>
+    <p id="foot-build"></p>
+  </div>
+</footer>
+
+<script src="assets/data.js"></script>
+<script>
+(function () {
+  const D = window.EVAL;
+  const $ = (s, el = document) => el.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const fmt = (v, d = 2) => (v == null || isNaN(v)) ? "–" : Number(v).toLocaleString("en-US", {minimumFractionDigits: d, maximumFractionDigits: d});
+
+  const S = D.summary;                                 // sorted by overall score
+  const byModel = Object.fromEntries(S.map(r => [r.model, r]));
+  const COLORS = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"];
+  const color = Object.fromEntries(D.models.map((m, i) => [m, COLORS[i]]));  // fixed per model
+  const short = m => byModel[m].short;
+  const BUDGET = 3000;
+
+  /* tooltip */
+  const tip = $("#tip");
+  function showTip(e, html) { tip.innerHTML = html; tip.style.opacity = 1; moveTip(e); }
+  function moveTip(e) {
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = e.clientX + 14, y = e.clientY + 14;
+    if (x + w > innerWidth - 8) x = e.clientX - w - 14;
+    if (y + h > innerHeight - 8) y = e.clientY - h - 14;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  function hideTip() { tip.style.opacity = 0; }
+
+  /* hero */
+  const best = S[0];
+  const fits = S.filter(r => r.cpu_peak_ram_mb <= BUDGET);
+  $("#hero-stats").innerHTML = [
+    ["Best overall score", `${fmt(best.overall, 1)}<small> / 5</small>`, `${best.short}, mean of four judge criteria`],
+    ["Best Urdu fluency", `${fmt(best.urdu_fluency, 1)}<small> / 5</small>`, `${best.short}; Tiny Aya close behind at ${fmt(byModel[D.models[1]].urdu_fluency, 1)}`],
+    ["Best answers mostly correct", `${fmt(best.good_answers_pct, 0)}<small>%</small>`, `${best.short}; ${best.harmful_answers} of 50 flagged harmful`],
+    ["Fit a 3 GB phone budget", `${fits.length}<small> of 4</small>`, fits.map(r => r.short).join(" and ")],
+  ].map(([k, v, d]) => `<div class="card stat"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${esc(d)}</div></div>`).join("");
+
+  $("#verdict").innerHTML = `
+    <div class="card"><h3><span class="dot" style="background:${color[best.model]}"></span>${best.short} is the strongest model</h3>
+      <p>Top on correctness (${fmt(best.correctness)}), completeness, relevance and fluency, and significantly ahead of the runner-up (p = ${fmt(D.significance[0].p_value, 4)}). It is also the largest: ${fmt(best.cpu_peak_ram_mb, 0)} MB peak RAM.</p></div>
+    <div class="card"><h3>No model is field-ready yet <span class="pill bad">✕ Not safe to deploy</span></h3>
+      <p>No model gives reliably correct agronomic advice. Out of the box, these models know too little about Pakistani wheat and cotton practice; they need grounding in an expert knowledge base before a farmer sees an answer.</p></div>`;
+
+  /* model cards */
+  $("#model-cards").innerHTML = S.map((r, i) => `
+    <div class="card model">
+      <div class="top"><span class="dot" style="background:${color[r.model]}"></span><h3 style="margin:0">${esc(r.short)}</h3><span class="rank">#${i + 1}</span></div>
+      <dl>
+        <dt>Family</dt><dd>${esc(r.family)}</dd>
+        <dt>Quantisation</dt><dd>${esc(r.quant)}</dd>
+        <dt>File size</dt><dd>${fmt(r.file_gb)} GB</dd>
+        <dt>Overall score</dt><dd>${fmt(r.overall)}</dd>
+        <dt>Phone budget</dt><dd>${r.phone_friendly_ram ? '<span class="pill good">✓ Fits</span>' : '<span class="pill bad">✕ Over</span>'}</dd>
+      </dl>
+      <p style="margin:14px 0 0"><code>${esc(r.repo)}</code></p>
+    </div>`).join("");
+
+  /* horizontal bar chart: one bar per model, colour = model */
+  function bars(id, key, {min = 0, max, d = 2, unit = "", marker, markerLabel, tipExtra} = {}) {
+    const el = $(id);
+    el.innerHTML = S.map(r => {
+      const v = r[key];
+      const pct = Math.max(0, Math.min(100, (v - min) / (max - min) * 100));
+      const mk = marker != null ? `<span class="marker" style="left:${(marker - min) / (max - min) * 100}%" title="${esc(markerLabel)}"></span>` : "";
+      return `<div class="bar-row" data-m="${esc(r.model)}">
+        <span class="lab">${esc(r.short)}</span>
+        <span class="track"><span class="fill" style="width:0;background:${color[r.model]}" data-w="${pct}"></span>${mk}<span class="hit"></span></span>
+        <span class="val">${fmt(v, d)}${unit}</span></div>`;
+    }).join("");
+    el.querySelectorAll(".bar-row").forEach(row => {
+      const r = byModel[row.dataset.m];
+      const hit = row.querySelector(".hit");
+      hit.addEventListener("mousemove", e => showTip(e, `<b>${esc(r.short)}</b><br>${fmt(r[key], d)}${unit}${tipExtra ? "<br>" + tipExtra(r) : ""}`));
+      hit.addEventListener("mouseleave", hideTip);
+    });
+    requestAnimationFrame(() => requestAnimationFrame(() => el.querySelectorAll(".fill").forEach(f => f.style.width = f.dataset.w + "%")));
+  }
+
+  bars("#c-quality", "answer_quality", {min: 1, max: 5, tipExtra: r => `Correctness ${fmt(r.correctness)} · Completeness ${fmt(r.completeness)}`});
+  bars("#c-good", "good_answers_pct", {max: 100, d: 0, unit: "%"});
+  bars("#c-harm", "harmful_answers", {max: 50, d: 0, tipExtra: r => `${Math.round(r.harmful_answers / 50 * 100)}% of answers`});
+  bars("#c-sim", "sim_bge_m3", {min: 0.5, max: 1, tipExtra: r => `chrF++ ${fmt(r.chrf, 1)}`});
+  bars("#c-flu", "urdu_fluency", {min: 1, max: 5, tipExtra: r => `Relevance ${fmt(r.relevance)}`});
+  bars("#c-ram", "cpu_peak_ram_mb", {max: 5000, d: 0, unit: " MB", marker: BUDGET, markerLabel: "3,000 MB phone budget",
+    tipExtra: r => `After load ${fmt(r.cpu_ram_after_load_mb, 0)} MB · GPU VRAM ${fmt(r.vram_mb, 0)} MB<br>${r.phone_friendly_ram ? "✓ Within" : "✕ Over"} the 3,000 MB budget`});
+  bars("#c-file", "file_gb", {max: 3, unit: " GB"});
+  bars("#c-lat", "cpu_latency_median_s", {max: 30, d: 1, unit: " s", tipExtra: r => `Time to first token ${fmt(r.cpu_ttft_median_s)} s`});
+  bars("#c-wps", "cpu_urdu_words_s", {max: 10, d: 1, tipExtra: r => `${fmt(r.cpu_gen_tok_s, 1)} tokens/s · ${fmt(r.tokens_per_urdu_word)} tokens per Urdu word`});
+
+  /* heatmap */
+  const cats = Object.keys(D.by_category[D.models[0]]);
+  const seq = v => { const t = (v - 1) / 2; return t < 0.1 ? 0 : t < 0.25 ? 1 : t < 0.45 ? 2 : t < 0.65 ? 3 : t < 0.85 ? 4 : 5; };
+  $("#c-heat").innerHTML = `<thead><tr><th></th>${cats.map(c => `<th>${esc(c.replace("Affects", "effects"))}</th>`).join("")}</tr></thead><tbody>` +
+    D.models.map(m => `<tr><th><span class="dot" style="background:${color[m]};margin-right:8px"></span>${esc(short(m))}</th>` +
+      cats.map(c => { const v = D.by_category[m][c], s = seq(v);
+        return `<td data-tip="<b>${esc(short(m))}</b><br>${esc(c)}: ${fmt(v)}" style="background:var(--seq-${s});color:var(--sq-ink-${s})">${fmt(v)}</td>`; }).join("") + "</tr>").join("") + "</tbody>";
+  $("#c-heat").querySelectorAll("td").forEach(td => {
+    td.addEventListener("mousemove", e => showTip(e, td.dataset.tip)); td.addEventListener("mouseleave", hideTip);
+  });
+
+  /* tables */
+  function table(id, cols, rows) {
+    $(id).innerHTML = `<thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody>`;
+  }
+  const nameCell = m => `<th><span class="dot" style="background:${color[m]};margin-right:8px"></span>${esc(short(m))}</th>`;
+  table("#t-hyg", ["Model", "Urdu script", "Loops", "Cut off", "Avg words"],
+    S.map(r => `<tr>${nameCell(r.model)}<td>${fmt(r.urdu_script_pct, 1)}%</td><td>${r.looping_answers}</td><td>${r.truncated}</td><td>${fmt(r.avg_words, 0)}</td></tr>`));
+  table("#t-speed", ["Model", "CPU first token", "CPU tok/s", "CPU median", "GPU median", "GPU p90", "GPU tok/s", "Tok / Urdu word"],
+    S.map(r => `<tr>${nameCell(r.model)}<td>${fmt(r.cpu_ttft_median_s)} s</td><td>${fmt(r.cpu_gen_tok_s, 1)}</td><td>${fmt(r.cpu_latency_median_s, 1)} s</td><td>${fmt(r.gpu_latency_median_s)} s</td><td>${fmt(r.gpu_latency_p90_s)} s</td><td>${fmt(r.gpu_gen_tok_s, 0)}</td><td>${fmt(r.tokens_per_urdu_word)}</td></tr>`));
+  table("#t-agree", ["Criterion", "Spearman ρ", "Exact", "Within 1"],
+    D.judge_agreement.map(r => `<tr><th>${esc(r.criterion.replace("_", " "))}</th><td>${fmt(r.spearman, 3)}</td><td>${fmt(r["exact_agree_%"], 1)}%</td><td>${fmt(r["within_1_%"], 1)}%</td></tr>`));
+  table("#t-sig", ["Comparison", "Δ overall", "p"],
+    D.significance.map(r => `<tr><th>${esc(short(r.model_a))} vs ${esc(short(r.model_b))}</th><td>+${fmt(r.mean_diff)}</td><td>${r.p_value < 0.0001 ? "&lt; 0.0001" : fmt(r.p_value, 4)}</td></tr>`));
+
+  const c = D.config, g = c.gen;
+  $("#setup").innerHTML = [
+    ["Questions", "50 in Urdu: 25 wheat, 25 cotton, 5 per topic"],
+    ["Runtime", `llama.cpp ${esc(c.llama_cpp.split(" ")[0])}`],
+    ["Hardware", "NVIDIA A100 80 GB; CPU run on 4 threads"],
+    ["Sampling", `temperature ${g.temperature}, top-p ${g.top_p}, top-k ${g.top_k}, repeat penalty ${g.repeat_penalty}, seed ${g.seed}`],
+    ["Limits", `${g.max_tokens} tokens (256 on CPU), context ${c.ctx}`],
+    ["Judges", c.judges.map(esc).join("<br>")],
+    ["System prompt", `<span class="ur" style="display:block;font-size:14px;line-height:2">${esc(D.recommended.system_prompt)}</span>`],
+  ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+
+  $("#foot-build").textContent = `Built from results/baseline_eval_50 by scripts/build_site.py. Judges: ${c.judges.join(", ")}.`;
+
+  /* scatter: overall vs peak RAM */
+  (function scatter() {
+    const svg = $("#c-scatter"), W = 960, H = 420, L = 64, R = 32, T = 24, B = 56;
+    const xMin = 2000, xMax = 4600, yMin = 1, yMax = 4;
+    const X = v => L + (v - xMin) / (xMax - xMin) * (W - L - R);
+    const Y = v => T + (1 - (v - yMin) / (yMax - yMin)) * (H - T - B);
+    let s = "";
+    for (let y = 1; y <= 4; y += 0.5) s += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" stroke="var(--grid)" stroke-width="1"/><text x="${L - 12}" y="${Y(y) + 4}" text-anchor="end" font-size="12" fill="var(--ink-3)">${y.toFixed(1)}</text>`;
+    for (let x = 2000; x <= 4500; x += 500) s += `<text x="${X(x)}" y="${H - B + 22}" text-anchor="middle" font-size="12" fill="var(--ink-3)">${x.toLocaleString()}</text>`;
+    s += `<rect x="${L}" y="${T}" width="${X(BUDGET) - L}" height="${H - T - B}" fill="var(--s3)" opacity="0.06"/>`;
+    s += `<line x1="${X(BUDGET)}" x2="${X(BUDGET)}" y1="${T}" y2="${H - B}" stroke="var(--ink-3)" stroke-dasharray="4 4" stroke-width="1.5"/>`;
+    s += `<text x="${X(BUDGET) - 8}" y="${T + 16}" text-anchor="end" font-size="12" fill="var(--ink-2)">Fits 3 GB phone budget</text>`;
+    s += `<text x="${(L + W - R) / 2}" y="${H - 10}" text-anchor="middle" font-size="13" fill="var(--ink-2)">Peak RAM on CPU (MB) →</text>`;
+    s += `<text x="16" y="${(T + H - B) / 2}" text-anchor="middle" font-size="13" fill="var(--ink-2)" transform="rotate(-90 16 ${(T + H - B) / 2})">Overall score (1–5) →</text>`;
+    S.forEach(r => {
+      const x = X(r.cpu_peak_ram_mb), y = Y(r.overall), left = r.cpu_peak_ram_mb > 4000;
+      s += `<g class="pt" data-m="${esc(r.model)}"><circle cx="${x}" cy="${y}" r="20" fill="transparent"/>
+        <circle cx="${x}" cy="${y}" r="8" fill="${color[r.model]}" stroke="var(--surface)" stroke-width="2"/>
+        <text x="${x + (left ? -14 : 14)}" y="${y + 4}" text-anchor="${left ? "end" : "start"}" font-size="14" font-weight="600" fill="var(--ink)">${esc(r.short)}</text></g>`;
+    });
+    svg.innerHTML = s;
+    svg.querySelectorAll(".pt").forEach(g => {
+      const r = byModel[g.dataset.m];
+      g.addEventListener("mousemove", e => showTip(e, `<b>${esc(r.short)}</b><br>Overall ${fmt(r.overall)} · ${fmt(r.cpu_peak_ram_mb, 0)} MB<br>Median ${fmt(r.cpu_latency_median_s, 1)} s per answer on CPU`));
+      g.addEventListener("mouseleave", hideTip);
+    });
+  })();
+
+  /* explorer */
+  const Q = D.questions;
+  const state = {crop: "", cat: "", id: Q[0].id};
+  const store = {get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+                 set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }};
+  const saved = store.get("urdu-bench-q"); if (saved && Q.some(q => q.id === saved)) state.id = saved;
+
+  const allCats = [...new Set(Q.map(q => q.category))].sort();
+  $("#f-cat").innerHTML = `<option value="">All topics</option>` + allCats.map(c => `<option>${esc(c)}</option>`).join("");
+  const visible = () => Q.filter(q => (!state.crop || q.crop === state.crop) && (!state.cat || q.category === state.cat));
+
+  function fillQuestions() {
+    const v = visible();
+    if (!v.some(q => q.id === state.id)) state.id = v[0]?.id;
+    $("#f-q").innerHTML = v.map(q => `<option value="${q.id}" ${q.id === state.id ? "selected" : ""}>${q.id} · ${esc(q.question.slice(0, 60))}${q.question.length > 60 ? "…" : ""}</option>`).join("");
+    renderQ();
+  }
+
+  // model answers use light Markdown: bold, bullets, headings
+  const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/^\s*#{1,4}\s*/gm, "").replace(/^\s*[*-]\s+/gm, "• ").replace(/\n{3,}/g, "\n\n");
+  const scoreBox = (n, l) => `<div class="score"><div class="n">${fmt(n, 1)}</div><div class="l">${l}</div></div>`;
+  function renderQ() {
+    const q = Q.find(x => x.id === state.id); if (!q) return;
+    store.set("urdu-bench-q", q.id);
+    $("#q-card").innerHTML = `
+      <div class="q-meta"><span class="pill">${esc(q.id)}</span><span class="pill">${esc(q.crop)}</span><span class="pill">${esc(q.category)}</span></div>
+      <p class="ur q-text" lang="ur">${esc(q.question)}</p>
+      <details class="ref"><summary>Show expert reference answer</summary><div class="ur" lang="ur">${esc(q.reference)}</div></details>`;
+    $("#answers").innerHTML = D.models.map(m => {
+      const a = q.answers[m]; if (!a) return "";
+      const flags = [
+        a.harmful ? `<span class="pill bad">⚠ Harmful advice</span>` : "",
+        a.looping ? `<span class="pill bad">↻ Repetition loop</span>` : "",
+        a.finish === "length" ? `<span class="pill">✂ Cut off</span>` : "",
+        a.correctness >= 4 ? `<span class="pill good">✓ Mostly correct</span>` : "",
+      ].join("");
+      const reasons = Object.entries(a.reasons).filter(([, t]) => t).map(([j, t]) => `<p><b>${esc(j)}:</b> ${esc(t)}</p>`).join("");
+      return `<article class="card ans">
+        <div class="head"><span class="dot" style="background:${color[m]}"></span><b>${esc(short(m))}</b><span class="lat">${fmt(a.latency_s)} s · ${a.words} words</span></div>
+        <div class="scores">${scoreBox(a.correctness, "Correct")}${scoreBox(a.completeness, "Complete")}${scoreBox(a.urdu_fluency, "Fluency")}${scoreBox(a.relevance, "Relevant")}</div>
+        ${flags ? `<div class="flags">${flags}</div>` : ""}
+        <div class="body ur" lang="ur">${md(a.answer)}</div>
+        <details class="ref reasons"><summary>Why the judges scored it this way</summary><div style="margin-top:8px">${reasons}</div></details>
+      </article>`;
+    }).join("");
+  }
+
+  $("#f-crop").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    $("#f-crop").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+    state.crop = b.dataset.v; fillQuestions();
+  });
+  $("#f-cat").addEventListener("change", e => { state.cat = e.target.value; fillQuestions(); });
+  $("#f-q").addEventListener("change", e => { state.id = e.target.value; renderQ(); });
+  function step(d) {
+    const v = visible(), i = v.findIndex(q => q.id === state.id);
+    state.id = v[(i + d + v.length) % v.length].id; $("#f-q").value = state.id; renderQ();
+  }
+  $("#q-prev").addEventListener("click", () => step(-1));
+  $("#q-next").addEventListener("click", () => step(1));
+  fillQuestions();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "best_overall": {
+    "model": "Gemma-4-E2B [Q4_0]",
+    "overall": 3.1,
+    "answer_quality": 2.09,
+    "urdu_fluency": 4.32,
+    "file_gb": 2.84,
+    "cpu_peak_ram_mb": 4318.0,
+    "cpu_latency_median_s": 21.74,
+    "repo": "ggml-org/gemma-4-E2B-it-GGUF",
+    "gguf": "gemma-4-E2B-it-Q4_0.gguf"
+  },
+  "best_within_3000MB_ram": {
+    "model": "Qwen3.5-2B [Q4_K_M]",
+    "overall": 1.46,
+    "answer_quality": 1.04,
+    "urdu_fluency": 1.98,
+    "file_gb": 1.28,
+    "cpu_peak_ram_mb": 2692.0,
+    "cpu_latency_median_s": 18.82,
+    "repo": "unsloth/Qwen3.5-2B-GGUF",
+    "gguf": "Qwen3.5-2B-Q4_K_M.gguf"
+  },
+  "demo_model": "Qwen3.5-2B [Q4_K_M]",
+  "llama_cpp_commit": "ca89968 Fri Nov 6 16:06:59 2026 -0800",
+  "generation_settings": {
+    "temperature": 0.3,
+    "top_p": 0.9,
+    "top_k": 40,
+    "repeat_penalty": 1.1,
+    "max_tokens": 512,
+    "seed": 42
+  },
+  "system_prompt": "آپ پاکستان کے کسانوں کے لیے ایک ماہر زرعی مشیر ہیں۔ کسان کے سوال کا جواب صرف اردو میں دیں۔ جواب درست، عملی اور مختصر ہو (تقریباً 100 سے 150 الفاظ)۔ اگر کسی دوا یا کھاد کی مقدار بتائیں تو فی ایکڑ بتائیں۔"
+}

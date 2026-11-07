@@ -1,0 +1,7 @@
+model_a,model_b,mean_diff,p_value
+Gemma-4-E2B [Q4_0],Tiny-Aya-Fire [Q4_K_M],0.3,0.0011
+Gemma-4-E2B [Q4_0],Qwen3.5-2B [Q4_K_M],1.642,0.0
+Gemma-4-E2B [Q4_0],Qwen3-1.7B [Q4_K_M],1.862,0.0
+Tiny-Aya-Fire [Q4_K_M],Qwen3.5-2B [Q4_K_M],1.342,0.0
+Tiny-Aya-Fire [Q4_K_M],Qwen3-1.7B [Q4_K_M],1.562,0.0
+Qwen3.5-2B [Q4_K_M],Qwen3-1.7B [Q4_K_M],0.22,0.0

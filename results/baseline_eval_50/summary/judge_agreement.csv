@@ -1,0 +1,5 @@
+criterion,spearman,exact_agree_%,within_1_%
+correctness,0.831,82.5,97.5
+completeness,0.892,83.5,100.0
+urdu_fluency,0.918,59.0,98.5
+relevance,0.851,48.5,84.5
